@@ -1,0 +1,8 @@
+# Runtime dependencies for Phase 1 (Windows capture and preview).
+mss>=10,<11
+numpy>=1.26,<3
+pywin32>=306; platform_system == "Windows"
+opencv-python>=4.9,<5
+
+# Test dependency.
+pytest>=8,<9

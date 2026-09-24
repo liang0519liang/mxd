@@ -1,0 +1,2 @@
+# Optional local browser-based annotation server for Phase 2.
+label-studio>=1.13,<2
