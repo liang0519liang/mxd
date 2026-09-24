@@ -22,4 +22,5 @@ i7-10700、RTX 3060 12GB、16GB 内存足以完成本项目的本地轻量模型
 - [分阶段实施与验收](docs/implementation_plan.md)
 - [配置设计与标定指南](docs/config_guide.md)
 - [训练数据与术语](training/README.md)
+- [本地网页手动框选标注指南](docs/annotation_guide.md)
 - [风险、边界与待确认项](docs/troubleshooting.md)
