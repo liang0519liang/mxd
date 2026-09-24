@@ -33,22 +33,26 @@ class GameCapture:
         win32gui.EnumWindows(callback, None)
         return result
 
-    def client_rect(self) -> ClientRect:
+    def client_rect(self, require_foreground: bool = False) -> ClientRect:
         matches = list(self._windows())
         if not matches: raise WindowUnavailable(f"未找到标题含“{self.title_keyword}”的窗口")
         if len(matches) > 1: raise WindowUnavailable("匹配到多个窗口，请设置更精确的 WINDOW_TITLE_KEYWORD：" + ", ".join(t for _, t in matches))
         import win32gui
-        hwnd, _ = matches[0]
-        if win32gui.IsIconic(hwnd): raise WindowUnavailable("游戏窗口已最小化")
-        if win32gui.GetForegroundWindow() != hwnd: raise WindowUnavailable("游戏窗口未获得焦点")
+        hwnd, title = matches[0]
+        # IsIconic 是 Win32 对“最小化”的唯一判断；窗口在其他程序后面并不等于最小化。
+        if win32gui.IsIconic(hwnd):
+            raise WindowUnavailable(f"游戏窗口已最小化（标题：{title}，hwnd={hwnd}）")
+        # 预览/检测只读屏幕，不应要求前台焦点；自动控制模式才需要此安全限制。
+        if require_foreground and win32gui.GetForegroundWindow() != hwnd:
+            raise WindowUnavailable("游戏窗口未获得焦点：自动控制已暂停；preview/detect 模式无需置顶")
         left, top = win32gui.ClientToScreen(hwnd, (0, 0))
         _, _, width, height = win32gui.GetClientRect(hwnd)
         if (width, height) != (config.EXPECTED_CLIENT_WIDTH, config.EXPECTED_CLIENT_HEIGHT):
             raise WindowUnavailable(f"客户区尺寸异常：{width}x{height}，期望 {config.EXPECTED_CLIENT_WIDTH}x{config.EXPECTED_CLIENT_HEIGHT}")
         return ClientRect(left, top, width, height)
 
-    def capture_game_frame(self) -> np.ndarray:
-        r = self.client_rect()
+    def capture_game_frame(self, require_foreground: bool = False) -> np.ndarray:
+        r = self.client_rect(require_foreground=require_foreground)
         with mss.mss() as sct:
             shot = np.asarray(sct.grab({"left": r.left, "top": r.top, "width": r.width, "height": r.height}))
         return cv2.cvtColor(shot, cv2.COLOR_BGRA2BGR)

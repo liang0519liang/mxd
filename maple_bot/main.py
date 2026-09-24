@@ -56,7 +56,7 @@ def run(mode: str) -> None:
     try:
         while True:
             try:
-                frame = capture.capture_game_frame()
+                frame = capture.capture_game_frame(require_foreground=mode == "auto")
                 roi = capture.capture_roi(frame)
                 result = monster_detector.detect(roi)
                 player = detect_player(frame, player_detector)
