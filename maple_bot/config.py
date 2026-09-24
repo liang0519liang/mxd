@@ -32,3 +32,20 @@ SAVE_DEBUG_IMAGES = False
 MAX_CONSECUTIVE_DETECTION_FAILURES = 5
 
 SUPPORTED_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp"}
+
+# YOLO 视觉（每个模型对应一套角色、怪物与地图配置）
+YOLO_MODEL_PATH = BASE_DIR / "models" / "maple_yolo.pt"
+YOLO_CONFIDENCE = 0.45
+YOLO_IOU_THRESHOLD = 0.50
+YOLO_DEVICE = "cpu"  # 可改为 0 使用第一张 CUDA GPU
+PLAYER_CLASS_NAME = "player"
+MONSTER_CLASS_NAME = "monster"
+DROP_CLASS_NAME = "drop"  # 仅绘制，不参与移动目标
+
+# 目标选择与位移：靠近最近怪物；超出该距离才尝试瞬移。
+MONSTER_THRESHOLD = 1
+TELEPORT_ENABLED = True
+TELEPORT_KEY = "shift"
+TELEPORT_DISTANCE = 100
+TELEPORT_PULSE_SECONDS = 0.08
+NO_MONSTER_WAIT_SECONDS = 2.0

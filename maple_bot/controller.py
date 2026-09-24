@@ -61,6 +61,21 @@ class KeyboardController:
         time.sleep(config.MOVE_PULSE_SECONDS)
         self.stop_movement()
 
+    def teleport(self, direction: str) -> None:
+        """短按瞬移键并同时按方向；无论异常与否都释放两个键。"""
+        if not config.TELEPORT_ENABLED:
+            self.move_pulse(direction)
+            return
+        self.stop_movement()
+        movement_key = config.LEFT_KEY if direction == "left" else config.RIGHT_KEY
+        try:
+            self._down(config.TELEPORT_KEY)
+            self._down(movement_key)
+            time.sleep(config.TELEPORT_PULSE_SECONDS)
+        finally:
+            self._up(movement_key)
+            self._up(config.TELEPORT_KEY)
+
     def attack_start(self) -> None:
         self.stop_movement()
         self._down(config.ATTACK_KEY)

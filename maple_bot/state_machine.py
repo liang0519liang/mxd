@@ -28,9 +28,13 @@ class BotStateMachine:
    if count==0: self.transition(State.IDLE,"怪物已消失"); return self.state
    if o.player is None: self.transition(State.RECOVER,"人物定位失败"); return self.state
    if time.monotonic()-(self.approach_started or time.monotonic())>config.MOVE_TIMEOUT_SECONDS: self.transition(State.RECOVER,"移动超时"); return self.state
-   target=sum(d.x for d in o.monsters.detections)/count; distance=target-o.player.x
+   target=min(o.monsters.detections, key=lambda monster: abs(monster.x - o.player.x)).x; distance=target-o.player.x
    if abs(distance)<=config.ATTACK_DISTANCE: self.controller.stop_movement(); self.controller.attack_start(); self.empty_frames=0; self.transition(State.ATTACK,"进入攻击距离")
-   else: self.controller.move_pulse("right" if distance>0 else "left")
+   else:
+    direction = "right" if distance > 0 else "left"
+    if config.TELEPORT_ENABLED and abs(distance) >= config.TELEPORT_DISTANCE:
+     self.controller.teleport(direction)
+    else: self.controller.move_pulse(direction)
   elif self.state==State.ATTACK:
    if o.player is None: self.transition(State.RECOVER,"攻击中人物定位失败"); return self.state
    if count: self.empty_frames=0
