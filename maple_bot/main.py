@@ -44,7 +44,7 @@ def draw_status(frame, result, player_result, player_found: bool, state: str, at
         cv2.putText(frame, line, (15, 30 + index * 27), cv2.FONT_HERSHEY_SIMPLEX, 0.58, (0, 255, 255), 2, cv2.LINE_AA)
 
 
-def run(mode: str) -> None:
+def run(mode: str, enable_input: bool = False) -> None:
     configure_logging()
     log = logging.getLogger(__name__)
     capture = GameCapture()
@@ -56,7 +56,13 @@ def run(mode: str) -> None:
     if mode == "auto" and not player_detector.templates:
         raise SystemExit("自动控制需要人物模板：请在 templates/player/ 添加模板。")
 
-    controller = KeyboardController(enabled=mode == "auto" and not config.DEBUG_MODE)
+    input_active = mode == "auto" and (enable_input or not config.DEBUG_MODE)
+    if mode == "auto" and not input_active:
+        raise SystemExit(
+            "自动模式默认禁止发送输入：请在 config.py 设置 DEBUG_MODE = False，"
+            "或明确运行 python main.py auto --enable-input。"
+        )
+    controller = KeyboardController(enabled=input_active)
     state_machine = BotStateMachine(controller)
     try:
         while True:
@@ -94,4 +100,6 @@ def run(mode: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=["preview", "detect", "auto"], nargs="?", default="preview")
-    run(parser.parse_args().mode)
+    parser.add_argument("--enable-input", action="store_true", help="仅 auto：明确允许 pydirectinput 向前台游戏窗口发送按键")
+    args = parser.parse_args()
+    run(args.mode, enable_input=args.enable_input)
