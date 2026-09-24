@@ -34,7 +34,7 @@ python main.py auto        # 自动状态机；仍需将 config.DEBUG_MODE 改�
 1. 从**客户区**截图裁剪怪物，保存 PNG/JPG/JPEG/BMP 到 `templates/monsters/`；同怪不同动画分别保存。
 2. 裁剪角色主体到 `templates/player/`，建议提供站立/移动/攻击姿态；自动模式缺失此模板会拒绝启动。
 3. 先运行 `preview`，根据蓝色矩形调整 `ROI_LEFT/TOP/WIDTH/HEIGHT`；ROI 坐标相对客户区左上角，必须完全在 1366×768 内。
-4. 用 `detect` 观察绿色框、置信度与计数，调整 `MATCH_THRESHOLD`、`MONSTER_MIN_DISTANCE`。检测结果已转换为客户区坐标。
+4. 用 `detect` 观察绿色框、顶部 `monsters` 计数、`best` 最高分和每个模板的 `template max`。绿色框只会在分数达到 `MATCH_THRESHOLD` 后出现；若 `best` 低于阈值，请先检查模板是否从同一客户区分辨率裁剪，再逐步下调阈值。检测结果已转换为客户区坐标。
 5. 在空闲环境运行 `auto` 且保持 `DEBUG_MODE=True` 检查状态；确认后改为 `False`。先手工测试 `pydirectinput` 是否能被游戏接收；兼容性无法保证。
 
 ## 配置速查
@@ -46,5 +46,5 @@ python main.py auto        # 自动状态机；仍需将 config.DEBUG_MODE 改�
 - “没有模板”：检查图片扩展名与目录、读取权限和 OpenCV 能否打开该文件。
 - “客户区尺寸异常/ROI 超界”：不要用窗口外框尺寸，按预览重新配置；检查显示缩放。
 - “窗口未获得焦点”：手动点击游戏窗口，程序宁可停止也不会盲按。
-- 漏检/重复：增加对应动画模板、提高/降低阈值并调整最小间距；不要把检测失败误当作无怪。
+- detect 没有绿色框：先看顶部 `best` 与 `template max`。这不是程序未检测，而是当前最高分未达到阈值；确保模板不是纯色、来自同一 1366×768 客户区和相同 DPI，然后逐步下调 `MATCH_THRESHOLD`。
 - F8 紧急停止由 Win32 轮询实现；实际 Windows 部署前请确认其能被可靠接收。退出程序使用 Ctrl+C，`finally`/`atexit` 会释放按键。
