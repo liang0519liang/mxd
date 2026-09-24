@@ -109,15 +109,50 @@ def detect_monsters(frame: np.ndarray, detector: TemplateDetector | None = None)
     return (detector or load_monster_templates()).detect(frame)
 
 
-def detect_player(frame: np.ndarray, detector: TemplateDetector | None = None) -> Detection | None:
-    detector = detector or TemplateDetector(config.PLAYER_TEMPLATE_DIR, config.PLAYER_MATCH_THRESHOLD, config.MONSTER_MIN_DISTANCE)
+def detect_player_result(frame: np.ndarray, detector: TemplateDetector | None = None) -> DetectionResult:
+    """返回完整人物匹配诊断；detect 模式可显示低于阈值的最高分。"""
+    detector = detector or TemplateDetector(
+        config.PLAYER_TEMPLATE_DIR,
+        config.PLAYER_MATCH_THRESHOLD,
+        config.MONSTER_MIN_DISTANCE,
+    )
     if not detector.templates:
         detector.load()
-    result = detector.detect(frame)
+    return detector.detect(frame)
+
+
+def player_from_result(result: DetectionResult) -> Detection | None:
+    """选择最高分人物框，并将 y 改为角色脚底附近的移动参考点。"""
     if not result.reliable or not result.detections:
         return None
     best = max(result.detections, key=lambda item: item.confidence)
-    return Detection(best.x, best.y + best.height // 2, best.confidence, best.template_name, best.width, best.height)
+    return Detection(
+        best.x,
+        best.y + best.height // 2,
+        best.confidence,
+        best.template_name,
+        best.width,
+        best.height,
+    )
+
+
+def detect_player(frame: np.ndarray, detector: TemplateDetector | None = None) -> Detection | None:
+    return player_from_result(detect_player_result(frame, detector))
+
+
+def draw_player_detection(frame: np.ndarray, player: Detection | None) -> np.ndarray:
+    """绘制人物检测框和红色脚底参考点。"""
+    output = frame.copy()
+    if player is None:
+        return output
+    left = player.x - player.width // 2
+    top = player.y - player.height
+    right = left + player.width
+    bottom = player.y
+    cv2.rectangle(output, (left, top), (right, bottom), (0, 165, 255), 2)
+    cv2.circle(output, (player.x, player.y), 4, (0, 0, 255), -1)
+    cv2.putText(output, f"PLAYER {player.template_name} {player.confidence:.3f}", (left, max(16, top - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 1, cv2.LINE_AA)
+    return output
 
 
 def draw_detections(frame: np.ndarray, detections: list[Detection]) -> np.ndarray:

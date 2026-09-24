@@ -10,7 +10,7 @@ import cv2
 import config
 from capture import CaptureError, GameCapture
 from controller import KeyboardController
-from detector import TemplateDetector, detect_player, draw_detections, load_monster_templates
+from detector import TemplateDetector, draw_detections, draw_player_detection, load_monster_templates, player_from_result
 from state_machine import BotStateMachine, Observation
 
 
@@ -23,18 +23,23 @@ def configure_logging() -> None:
     )
 
 
-def draw_status(frame, result, state: str, attacking: bool) -> None:
+def draw_status(frame, result, player_result, player_found: bool, state: str, attacking: bool) -> None:
     """把计数、阈值和未命中模板的最高置信度直接显示在 detect 窗口。"""
     lines = [
         f"state={state}  monsters={len(result.detections)}  attack={attacking}",
-        f"reliable={result.reliable}  threshold={config.MATCH_THRESHOLD:.3f}  best={result.best_score if result.best_score is not None else -1:.3f}",
+        f"monster reliable={result.reliable} threshold={config.MATCH_THRESHOLD:.3f} best={result.best_score if result.best_score is not None else -1:.3f}",
+        f"player found={player_found} threshold={config.PLAYER_MATCH_THRESHOLD:.3f} best={player_result.best_score if player_result.best_score is not None else -1:.3f}",
     ]
     if result.error:
-        lines.append(f"error: {result.error}")
+        lines.append(f"monster error: {result.error}")
     elif result.template_scores:
         scores = " | ".join(f"{name}:{score:.3f}" for name, score in sorted(result.template_scores.items()))
-        # cv2 文本过长会溢出，日志仍会保留完整模板分数。
-        lines.append(("template max: " + scores)[:180])
+        lines.append(("monster max: " + scores)[:180])
+    if player_result.error:
+        lines.append(f"player error: {player_result.error}")
+    elif player_result.template_scores:
+        player_scores = " | ".join(f"{name}:{score:.3f}" for name, score in sorted(player_result.template_scores.items()))
+        lines.append(("player max: " + player_scores)[:180])
     for index, line in enumerate(lines):
         cv2.putText(frame, line, (15, 30 + index * 27), cv2.FONT_HERSHEY_SIMPLEX, 0.58, (0, 255, 255), 2, cv2.LINE_AA)
 
@@ -59,14 +64,16 @@ def run(mode: str) -> None:
                 frame = capture.capture_game_frame(require_foreground=mode == "auto")
                 roi = capture.capture_roi(frame)
                 result = monster_detector.detect(roi)
-                player = detect_player(frame, player_detector)
+                player_result = player_detector.detect(frame)
+                player = player_from_result(player_result)
                 if mode == "auto":
                     state_machine.step(Observation(result, player, emergency=controller.emergency_pressed()))
 
                 visual = draw_detections(frame, result.detections)
+                visual = draw_player_detection(visual, player)
                 cv2.rectangle(visual, (config.ROI_LEFT, config.ROI_TOP), (config.ROI_LEFT + config.ROI_WIDTH, config.ROI_TOP + config.ROI_HEIGHT), (255, 0, 0), 2)
-                draw_status(visual, result, state_machine.state.value, config.ATTACK_KEY in controller.down)
-                log.debug("detect: count=%d, best=%s, per_template=%s", len(result.detections), result.best_score, result.template_scores)
+                draw_status(visual, result, player_result, player is not None, state_machine.state.value, config.ATTACK_KEY in controller.down)
+                log.debug("detect: monsters=%d monster_scores=%s player=%s player_scores=%s", len(result.detections), result.template_scores, player is not None, player_result.template_scores)
                 if mode in ("preview", "detect"):
                     cv2.imshow("Maple Bot Debug (q/ESC 退出)", visual)
                     if cv2.waitKey(1) & 0xFF in (ord("q"), 27):
